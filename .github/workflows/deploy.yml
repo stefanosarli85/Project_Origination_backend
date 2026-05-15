@@ -1,0 +1,54 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: 22
+          script: |
+            set -e
+
+            APP_DIR="project_origination_backend"
+
+            if [ ! -d "$APP_DIR" ]; then
+              git clone https://github.com/stefanosarli85/Project_Origination_backend.git $APP_DIR
+            fi
+
+            cd $APP_DIR
+
+            git pull origin main
+
+            # Create env file safely
+            cat > .env <<EOF
+DB_HOST=${{ secrets.DB_HOST }}
+DB_USER=${{ secrets.DB_USER }}
+DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+DB_NAME=${{ secrets.DB_NAME }}
+DB_PORT=${{ secrets.DB_PORT }}
+EOF
+
+            docker build -t project_origination_backend .
+
+            docker stop project-origination || true
+            docker rm project-origination || true
+
+            docker run -d \
+              -p 8000:8000 \
+              --env-file .env \
+              --name project-origination \
+              project_origination_backend
