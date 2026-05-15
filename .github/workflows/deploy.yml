@@ -15,14 +15,20 @@ jobs:
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.0
+        env:
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_PORT: ${{ secrets.DB_PORT }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
+          envs: DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
           script: |
             set -e
-
             APP_DIR="project_origination_backend"
 
             if [ ! -d "$APP_DIR" ]; then
@@ -30,25 +36,16 @@ jobs:
             fi
 
             cd $APP_DIR
-
             git pull origin main
 
-            # Create env file safely
-            cat > .env <<EOF
-DB_HOST=${{ secrets.DB_HOST }}
-DB_USER=${{ secrets.DB_USER }}
-DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-DB_NAME=${{ secrets.DB_NAME }}
-DB_PORT=${{ secrets.DB_PORT }}
-EOF
+            printf "DB_HOST=%s\nDB_USER=%s\nDB_PASSWORD=%s\nDB_NAME=%s\nDB_PORT=%s\n" \
+              "$DB_HOST" "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$DB_PORT" > .env
 
             docker build -t project_origination_backend .
-
             docker stop project-origination || true
             docker rm project-origination || true
-
             docker run -d \
-              -p 8000:8000 \
+              -p 1701:1701 \
               --env-file .env \
               --name project-origination \
               project_origination_backend
