@@ -163,7 +163,7 @@ def _send_batch(bt_bytes: bytes) -> str | None:
     print("Uploading batch file ...")
 
     response = requests.post(
-        SEND_BATCH_URL,
+        "https://prowess.cmie.com/api/sendbatch",
         data={"apikey": API_KEY, "format": OUTPUT_FORMAT},
         files={"batchfile": ("batch.bt", bt_bytes)},
     )
@@ -199,7 +199,7 @@ def _poll_until_ready(token: str) -> bytes | None:
     while True:
         print("Checking batch status ...")
 
-        response = requests.post(GET_BATCH_URL, data={"apikey": API_KEY, "token": token})
+        response = requests.post("https://prowess.cmie.com/api/getbatch", data={"apikey": API_KEY, "token": token})
         content_type = response.headers.get("Content-Type", "")
 
         # ZIP arrived (non-JSON content type)
