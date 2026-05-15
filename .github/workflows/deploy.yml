@@ -21,12 +21,13 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_PORT: ${{ secrets.DB_PORT }}
+          API_KEY: ${{ secrets.API_KEY }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          envs: DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT
+          envs: DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT,API_KEY
           script: |
             set -e
 
@@ -47,7 +48,6 @@ jobs:
               sudo apt-get install -y docker-ce docker-ce-cli containerd.io
               sudo systemctl start docker
               sudo systemctl enable docker
-              # Allow current user to run docker without sudo
               sudo usermod -aG docker $USER
               newgrp docker
             fi
@@ -61,8 +61,8 @@ jobs:
             cd $APP_DIR
             git pull origin main
 
-            printf "DB_HOST=%s\nDB_USER=%s\nDB_PASSWORD=%s\nDB_NAME=%s\nDB_PORT=%s\n" \
-              "$DB_HOST" "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$DB_PORT" > .env
+            printf "DB_HOST=%s\nDB_USER=%s\nDB_PASSWORD=%s\nDB_NAME=%s\nDB_PORT=%s\nAPI_KEY=%s\n" \
+              "$DB_HOST" "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$DB_PORT" "$API_KEY" > .env
 
             sudo docker build -t project_origination_backend .
             sudo docker stop project-origination || true

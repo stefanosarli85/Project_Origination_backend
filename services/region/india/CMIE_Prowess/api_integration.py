@@ -22,7 +22,7 @@ load_dotenv(dotenv_path=ENV_PATH)
 API_KEY        = os.getenv("API_KEY")
 SEND_BATCH_URL = os.getenv("SEND_BATCH_URL")
 GET_BATCH_URL  = os.getenv("GET_BATCH_URL")
-OUTPUT_FORMAT  = os.getenv("OUTPUT_FORMAT", "json")
+OUTPUT_FORMAT  = "json"
 POLL_INTERVAL  = 25  # seconds
 
 # =========================
