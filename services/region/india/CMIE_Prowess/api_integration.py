@@ -310,5 +310,5 @@ def run_pipeline(company_codes: list) -> dict:
 #     response = run_pipeline(company_codes)
 #     print(json.dumps(response, indent=2, ensure_ascii=False))
 
-def create_and_run_pipeline(company_codes: list[int]):
+def create_and_run_pipeline(company_codes: list[str]):
     return run_pipeline(company_codes)
