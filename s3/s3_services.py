@@ -23,14 +23,6 @@ AWS_ACCESS_KEY_ID = os.getenv("YOUR_ACCESS_KEY")
 AWS_SECRET_ACCESS_KEY = os.getenv("YOUR_SECRET_KEY")
 REGION = os.getenv("AWS_REGION", "ap-south-1")
 
-print("KEY LOADED:", bool(AWS_ACCESS_KEY_ID), bool(AWS_SECRET_ACCESS_KEY))
-
-# =========================
-# FAIL FAST CHECK
-# =========================
-if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
-    raise Exception("❌ AWS credentials NOT loaded. Check .env file location or variables.")
-
 # =========================
 # S3 CLIENT
 # =========================

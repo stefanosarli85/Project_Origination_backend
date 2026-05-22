@@ -22,12 +22,16 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_PORT: ${{ secrets.DB_PORT }}
           API_KEY: ${{ secrets.API_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          OPENAI_TOKEN: ${{ secrets.OPENAI_TOKEN }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          envs: DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT,API_KEY
+          envs: DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT,API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,OPENAI_TOKEN
           script: |
             set -e
 
@@ -61,8 +65,9 @@ jobs:
             cd $APP_DIR
             git pull origin main
 
-            printf "DB_HOST=%s\nDB_USER=%s\nDB_PASSWORD=%s\nDB_NAME=%s\nDB_PORT=%s\nAPI_KEY=%s\n" \
-              "$DB_HOST" "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$DB_PORT" "$API_KEY" > .env
+            printf "DB_HOST=%s\nDB_USER=%s\nDB_PASSWORD=%s\nDB_NAME=%s\nDB_PORT=%s\nAPI_KEY=%s\nAWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\nAWS_REGION=%s\nOPENAI_TOKEN=%s\n" \
+              "$DB_HOST" "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$DB_PORT" "$API_KEY" \
+              "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_REGION" "$OPENAI_TOKEN" > .env
 
             sudo docker build -t project_origination_backend .
             sudo docker stop project-origination || true
