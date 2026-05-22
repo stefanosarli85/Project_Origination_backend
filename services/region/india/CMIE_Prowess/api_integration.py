@@ -225,41 +225,15 @@ def _poll_until_ready(token: str) -> bytes | None:
 # =========================
 
 def run_pipeline(company_codes: list) -> dict:
-    bt_bytes = _build_bt_bytes(company_codes)
+    bt_bytes = _build_bt_bytes(company_codes)  # per request ✅
 
-    token = _send_batch(bt_bytes)
+    token = _send_batch(bt_bytes)              # per request ✅
     if not token:
         return {"success": False, "error": "Batch submission failed."}
 
-    zip_bytes = _poll_until_ready(token)
+    zip_bytes = _poll_until_ready(token)       # must use its OWN token ✅
     if not zip_bytes:
         return {"success": False, "error": "Did not receive ZIP from API."}
-
-    raw     = _parse_zip_bytes(zip_bytes)
-    reports = []
-
-    for report_key, file_data in raw.get("data_files", {}).items():
-        if "error" in file_data:
-            reports.append({"report_key": report_key, "error": file_data["error"]})
-            continue
-
-        reports.append({
-            "report_key":  report_key,
-            "report_name": file_data.get("report_name", ""),
-            "server_time": file_data.get("server_time", ""),
-            "errno":       file_data.get("errno"),
-            "errmsg":      file_data.get("errmsg", ""),
-            "periods":     file_data.get("periods", []),
-            "data":        file_data.get("records", []),
-        })
-
-    return {
-        "success":       True,
-        "token":         token,
-        "company_codes": company_codes,
-        "companies":     raw.get("company_info", {}),
-        "reports":       reports,
-    }
 
 
 # =========================

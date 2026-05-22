@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Form, UploadFile, Body
+from fastapi.concurrency import run_in_threadpool
 
 from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
 from services.region.italy.ReportAziende.italy_region_service import check_if_data_available_in_db, get_company_full_data, \
@@ -9,9 +10,9 @@ router = APIRouter(prefix="/api")
 
 # INDIA
 @router.post("/india/get-report")
-def run_italian_pipeline(company_code: str = Form(...)):
+async def run_italian_pipeline(company_code: str = Form(...)):
     company_codes = [company_code]
-    response = create_and_run_pipeline(company_codes)
+    response = await run_in_threadpool(create_and_run_pipeline, company_codes)
     return response
 
 # ITALY
