@@ -19,8 +19,8 @@ load_dotenv(dotenv_path=ENV_PATH, override=True)
 # Debug: check file path
 print("ENV PATH:", ENV_PATH)
 
-AWS_ACCESS_KEY_ID = os.getenv("YOUR_ACCESS_KEY")
-AWS_SECRET_ACCESS_KEY = os.getenv("YOUR_SECRET_KEY")
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 REGION = os.getenv("AWS_REGION", "ap-south-1")
 
 # =========================

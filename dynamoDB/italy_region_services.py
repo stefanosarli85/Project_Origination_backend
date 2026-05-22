@@ -10,8 +10,8 @@ ENV_PATH = BASE_DIR / ".env"
 
 env = dotenv_values(ENV_PATH)
 
-AWS_ACCESS_KEY_ID = env.get("YOUR_ACCESS_KEY")
-AWS_SECRET_ACCESS_KEY = env.get("YOUR_SECRET_KEY")
+AWS_ACCESS_KEY_ID = env.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = env.get("AWS_SECRET_ACCESS_KEY")
 
 print("KEY LOADED:", bool(AWS_ACCESS_KEY_ID), bool(AWS_SECRET_ACCESS_KEY))  # must be True True now
 
