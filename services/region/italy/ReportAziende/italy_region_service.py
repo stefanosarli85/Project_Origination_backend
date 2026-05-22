@@ -487,3 +487,4 @@ def get_and_save_italy_company(cid: str) -> dict:
     company_code = get_company_code(company_id)
     return get_company_full_data(company_code)
 
+
