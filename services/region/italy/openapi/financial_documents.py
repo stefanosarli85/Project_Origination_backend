@@ -22,7 +22,7 @@ load_dotenv(dotenv_path=ENV_PATH, override=True)
 # 🔥 DIRECT SAFE READ (no os.getenv confusion)
 env = dotenv_values(ENV_PATH)
 
-OPENAI_TOKEN = env.get("OPENAI_TOKEN")
+OPENAI_TOKEN = os.environ.get("OPENAI_TOKEN")
 
 
 def request_document(cf_piva_id: str):

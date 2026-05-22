@@ -1,6 +1,7 @@
 import boto3
 from pathlib import Path
 from dotenv import dotenv_values
+import os
 
 # =========================
 # Load .env
@@ -10,8 +11,8 @@ ENV_PATH = BASE_DIR / ".env"
 
 env = dotenv_values(ENV_PATH)
 
-AWS_ACCESS_KEY_ID = env.get("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = env.get("AWS_SECRET_ACCESS_KEY")
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 
 print("KEY LOADED:", bool(AWS_ACCESS_KEY_ID), bool(AWS_SECRET_ACCESS_KEY))  # must be True True now
 
