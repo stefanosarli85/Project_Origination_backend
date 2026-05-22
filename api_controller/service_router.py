@@ -7,7 +7,6 @@ from services.region.italy.ReportAziende.italy_region_service import check_if_da
 
 router = APIRouter(prefix="/api")
 
-
 # INDIA
 @router.post("/india/get-report")
 async def run_italian_pipeline(company_code: str = Form(...)):
