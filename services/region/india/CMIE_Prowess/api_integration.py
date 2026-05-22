@@ -55,27 +55,17 @@ def _build_bt_bytes(company_codes: list) -> bytes:
     return updated.encode("utf-8")
 
 def _parse_data_file(name: str, obj: dict) -> dict:
-    """
-    Parse one data JSON file (e.g. W9.json, W10.json).
-    Returns a structured dict with periods and per-metric records.
-    """
     meta      = obj.get("meta", {})
     head_rows = obj.get("head", [])
     data_rows = obj.get("data", [])
 
-    # head[3] -> [' ', ' ', ' ', ' ', ' ', 'Mar 2023', 'Mar 2024', ...]
-    # head[4] -> [' ', '', 'Info Type', 'Unit', 'Expression', 'Company A', ...]
     years     = [c.strip() for c in head_rows[3][5:] if c.strip()] if len(head_rows) > 3 else []
     companies = [c.strip() for c in head_rows[4][5:] if c.strip()] if len(head_rows) > 4 else []
 
-    # Period label: "Axis Bank Ltd. | Mar 2023"
     periods = [f"{co} | {yr}" for co, yr in zip(companies, years)]
 
-    report_name = next(
-        (c.strip() for row in head_rows for c in row
-         if c.strip() and not c.strip().startswith("Output")),
-        name,
-    )
+    # head[1][0] contains the report name e.g. "Standardised Annual Finance"
+    report_name = head_rows[1][0].strip() if len(head_rows) > 1 else name
 
     records = []
     for row in data_rows:
@@ -83,12 +73,15 @@ def _parse_data_file(name: str, obj: dict) -> dict:
             continue
         expression = row[4].strip()
         if not expression:
-            continue  # skip blank / section-header rows
+            continue
 
         values = {}
         for period, val in zip(periods, row[5:]):
             val_str = str(val).strip()
-            values[period] = float(val_str) if val_str else None
+            try:
+                values[period] = float(val_str) if val_str else None
+            except ValueError:
+                values[period] = None
 
         records.append({
             "expression": expression,
@@ -225,15 +218,41 @@ def _poll_until_ready(token: str) -> bytes | None:
 # =========================
 
 def run_pipeline(company_codes: list) -> dict:
-    bt_bytes = _build_bt_bytes(company_codes)  # per request ✅
+    bt_bytes = _build_bt_bytes(company_codes)
 
-    token = _send_batch(bt_bytes)              # per request ✅
+    token = _send_batch(bt_bytes)
     if not token:
         return {"success": False, "error": "Batch submission failed."}
 
-    zip_bytes = _poll_until_ready(token)       # must use its OWN token ✅
+    zip_bytes = _poll_until_ready(token)
     if not zip_bytes:
         return {"success": False, "error": "Did not receive ZIP from API."}
+
+    raw     = _parse_zip_bytes(zip_bytes)
+    reports = []
+
+    for report_key, file_data in raw.get("data_files", {}).items():
+        if "error" in file_data:
+            reports.append({"report_key": report_key, "error": file_data["error"]})
+            continue
+
+        reports.append({
+            "report_key":  report_key,
+            "report_name": file_data.get("report_name", ""),
+            "server_time": file_data.get("server_time", ""),
+            "errno":       file_data.get("errno"),
+            "errmsg":      file_data.get("errmsg", ""),
+            "periods":     file_data.get("periods", []),
+            "data":        file_data.get("records", []),
+        })
+
+    return {
+        "success":       True,
+        "token":         token,
+        "company_codes": company_codes,
+        "companies":     raw.get("company_info", {}),
+        "reports":       reports,
+    }
 
 
 # =========================

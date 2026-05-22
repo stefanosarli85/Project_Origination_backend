@@ -1,3 +1,5 @@
+import asyncio
+
 from fastapi import APIRouter, Form, UploadFile, Body
 from fastapi.concurrency import run_in_threadpool
 
@@ -11,7 +13,10 @@ router = APIRouter(prefix="/api")
 @router.post("/india/get-report")
 async def run_italian_pipeline(company_code: str = Form(...)):
     company_codes = [company_code]
-    response = await run_in_threadpool(create_and_run_pipeline, company_codes)
+    response = await asyncio.get_running_loop().run_in_executor(
+        None,
+        lambda: create_and_run_pipeline(company_codes)
+    )
     return response
 
 # ITALY
