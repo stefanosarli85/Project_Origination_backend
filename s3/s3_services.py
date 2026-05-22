@@ -1,27 +1,16 @@
 import boto3
 import os
 import json
-from dotenv import load_dotenv
 import uuid
 
-
 # =========================
-# FIXED .env LOADER (ROBUST)
+# ENV VARS (works locally + Docker)
 # =========================
-
-# Go ONE level up from /s3 folder → project root
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ENV_PATH = os.path.join(BASE_DIR, ".env")
-
-# Force load
-load_dotenv(dotenv_path=ENV_PATH, override=True)
-
-# Debug: check file path
-print("ENV PATH:", ENV_PATH)
-
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-REGION = os.getenv("AWS_REGION", "ap-south-1")
+REGION = os.environ.get("AWS_REGION", "ap-south-1")
+
+print("S3 KEY LOADED:", bool(AWS_ACCESS_KEY_ID), bool(AWS_SECRET_ACCESS_KEY), "REGION:", REGION)
 
 # =========================
 # S3 CLIENT
@@ -33,7 +22,7 @@ s3 = boto3.client(
     aws_secret_access_key=AWS_SECRET_ACCESS_KEY
 )
 
-BUCKET_NAME = "italy-companies-financial-documents"  # safer naming (no underscores recommended)
+BUCKET_NAME = "italy-companies-financial-documents"
 
 
 # =========================
@@ -44,7 +33,6 @@ def create_bucket_if_not_exists():
         s3.head_bucket(Bucket=BUCKET_NAME)
         print("✅ Bucket already exists")
         return
-
     except Exception:
         pass
 
@@ -56,9 +44,7 @@ def create_bucket_if_not_exists():
                 Bucket=BUCKET_NAME,
                 CreateBucketConfiguration={"LocationConstraint": REGION}
             )
-
         print("✅ Bucket created")
-
     except Exception as e:
         print("❌ Bucket error:", e)
 
@@ -93,9 +79,7 @@ def make_bucket_public():
             Bucket=BUCKET_NAME,
             Policy=json.dumps(policy)
         )
-
         print("✅ Bucket made public")
-
     except Exception as e:
         print("❌ Policy error:", e)
 
@@ -110,22 +94,12 @@ def upload_bytes_to_s3(
     file_name: str = None,
     content_type: str = "application/zip"
 ):
-    """
-    Upload raw bytes directly to S3.
-    """
-    s3_client = boto3.client(
-        "s3",
-        region_name=REGION,
-        aws_access_key_id=AWS_ACCESS_KEY_ID,
-        aws_secret_access_key=AWS_SECRET_ACCESS_KEY
-    )
-
     if not file_name:
         file_name = f"{uuid.uuid4()}.zip"
 
     s3_key = f"{folder}/{file_name}"
 
-    s3_client.put_object(
+    s3.put_object(
         Bucket=bucket_name,
         Key=s3_key,
         Body=file_bytes,
