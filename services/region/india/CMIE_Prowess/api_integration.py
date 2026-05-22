@@ -48,10 +48,11 @@ def _build_bt_bytes(company_codes: list) -> bytes:
     Nothing is written to disk.
     """
     content = TEMPLATE_BT_FILE.read_text(encoding="utf-8")
-    codes_string = "|".join(map(str, company_codes))
-    updated = re.sub(r"codes\{.*?\}", f"codes{{{codes_string}}}", content)
+    # Strip any accidental brackets or whitespace from each code
+    clean_codes = [str(c).strip().strip("[]") for c in company_codes]
+    codes_str = "|".join(clean_codes)
+    updated = re.sub(r"-codes\{[^}]*\}", f"-codes{{{codes_str}}}", content)
     return updated.encode("utf-8")
-
 
 def _parse_data_file(name: str, obj: dict) -> dict:
     """
@@ -224,46 +225,6 @@ def _poll_until_ready(token: str) -> bytes | None:
 # =========================
 
 def run_pipeline(company_codes: list) -> dict:
-    """
-    Full pipeline - nothing written to disk at any step.
-
-    Returns a frontend-ready JSON-serialisable dict:
-
-    {
-        "success": true,
-        "token": "20260514_1218885",
-        "company_codes": [256066],
-        "companies": {
-            "256066": "Axis Bank Ltd."
-        },
-        "reports": [
-            {
-                "report_key":  "W9",
-                "report_name": "Standardised Annual Finance",
-                "server_time": "2026-05-14 17:50:38",
-                "errno":       0,
-                "errmsg":      "Success",
-                "periods":     ["Axis Bank Ltd. | Mar 2023", "Axis Bank Ltd. | Mar 2024", ...],
-                "data": [
-                    {
-                        "expression": "Total income",
-                        "info_type":  "Standardised Annual Finance Standalone",
-                        "unit":       "Rs. Crore",
-                        "expr_type":  "CMIE Expr",
-                        "values": {
-                            "Axis Bank Ltd. | Mar 2023": 105788.58,
-                            "Axis Bank Ltd. | Mar 2024": 134866.89,
-                            "Axis Bank Ltd. | Mar 2025": 152144.97
-                        }
-                    },
-                    ...
-                ]
-            }
-        ]
-    }
-
-    On failure returns: {"success": false, "error": "<reason>"}
-    """
     bt_bytes = _build_bt_bytes(company_codes)
 
     token = _send_batch(bt_bytes)
@@ -305,10 +266,11 @@ def run_pipeline(company_codes: list) -> dict:
 # MAIN
 # =========================
 
-# if __name__ == "__main__":
-#     company_codes = [256066]
-#     response = run_pipeline(company_codes)
-#     print(json.dumps(response, indent=2, ensure_ascii=False))
-
 def create_and_run_pipeline(company_codes: list[str]):
     return run_pipeline(company_codes)
+
+
+
+# if __name__ == "__main__":
+#     bt_bytes = _build_bt_bytes(["[374518]"])
+#     print(bt_bytes.decode("utf-8")[:500])  # print first 500 chars to verify
