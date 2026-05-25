@@ -32,8 +32,7 @@ jobs:
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-envs: DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT,API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,OPENAI_TOKEN,REPOT_AZIENDE_TOKEN
-#                                                                                                                              👆 ADD THIS          script: |
+envs: DB_HOST,DB_USER,DB_PASSWORD,DB_NAME,DB_PORT,API_KEY,AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_REGION,OPENAI_TOKEN,REPOT_AZIENDE_TOKEN                                                                                                                        
             set -e
 
             # Install Docker if not present
