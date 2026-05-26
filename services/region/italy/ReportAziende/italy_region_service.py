@@ -488,3 +488,26 @@ def get_and_save_italy_company(cid: str) -> dict:
     return get_company_full_data(company_code)
 
 
+def get_all_records_italy(page: int):
+    """
+    Fetch paginated records from italy_companies_master_list.
+    page: 1-based page number
+    """
+    offset = (page - 1) * 100
+
+    sql = """
+        SELECT *
+        FROM italy_companies_master_list
+        ORDER BY id
+        LIMIT 100 OFFSET %s
+    """
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, (offset,))
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            return [dict(zip(columns, row)) for row in rows]
+    finally:
+        conn.close()
