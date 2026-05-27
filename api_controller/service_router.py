@@ -6,8 +6,7 @@ from pydantic import BaseModel
 from nlp_search.ollama_services import _ask_ollama, search
 from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
 from services.region.italy.ReportAziende.italy_region_service import check_if_data_available_in_db, \
-    get_company_full_data, \
-    get_and_save_italy_company, get_all_records_italy
+    get_company_full_data, column_search_italy,get_and_save_italy_company, get_all_records_italy
 from services.region.italy.openapi.financial_documents import fetch_and_upload_balance_sheet
 
 
@@ -71,3 +70,34 @@ async def search_query_endpoint(request: SearchRequest):
 def get_master_data_of_italy(page: int = 1):
     records = get_all_records_italy(page=page)
     return {"page": page, "data": records}
+
+
+@router.get("/italy-search-columns")
+def search_italy_by_columns(
+    company_code: str = "",
+    company_name: str = "",
+    city: str = "",
+    industry_code: str = "",
+    revenue_min: float = None,
+    revenue_max: float = None,
+    ebit_min: float = None,
+    ebit_max: float = None,
+    employees_min: float = None,
+    employees_max: float = None,
+):
+    records = column_search_italy(
+        company_code=company_code,
+        company_name=company_name,
+        city=city,
+        industry_code=industry_code,
+        revenue_min=revenue_min,
+        revenue_max=revenue_max,
+        ebit_min=ebit_min,
+        ebit_max=ebit_max,
+        employees_min=employees_min,
+        employees_max=employees_max,
+    )
+    return {
+        "total": len(records),
+        "data": records
+    }

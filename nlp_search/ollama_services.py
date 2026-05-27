@@ -1,8 +1,9 @@
 import json
 import re
 import requests
+from psycopg2.extras import RealDictCursor
 
-from services.region.italy.ReportAziende.italy_region_service import get_all_records_italy
+from repository.respository_connection import get_connection
 
 # ── Config ─────────────────────────────────────────────────────────────────────
 OLLAMA_URL   = "http://localhost:11434/api/generate"
@@ -10,112 +11,72 @@ OLLAMA_MODEL = "llama3.2"
 # ───────────────────────────────────────────────────────────────────────────────
 
 SCHEMA = """
-String fields (use == for exact match, 'in' for contains):
-  denominazione        : company name
-  comune               : city (e.g. ROMA, MILANO)
-  forma_giuridica      : legal form (e.g. contains RESPONSABILITA for SRL)
-  codice_ateco         : sector code (e.g. 66.22.00)
-  amministratore_2..5  : administrator names
-  socio_1..5           : shareholder names with % (e.g. "BERTINELLI FILIPPO 40%")
+Table: italy_companies_master_list
 
-Numeric fields (available for years 2022, 2023, 2024):
-  ricavi_operativi
-  totale_valore_produzione
-  totale_costi_produzione
-  ammortamenti_e_svalutazioni
-  ebit
-  immobilizzazioni_immateriali
-  immobilizzazioni_materiali
-  crediti_verso_clienti
-  disponibilita_liquide
-  totale_debiti
-  debiti_entro_12_mesi
-  debiti_oltre_12_mesi
-  trattamento_fine_rapporto
-  numero_dipendenti
-  costo_personale
+String columns:
+  denominazione       : company name
+  comune              : city (e.g. 'ROMA', 'MILANO')
+  forma_giuridica     : legal form
+  codice_ateco        : sector code (e.g. '66.22.00')
+  amministratore_2, amministratore_3, amministratore_4, amministratore_5
+  socio_1, socio_2, socio_3, socio_4, socio_5
 
-For numeric+year fields, the key is: "<field>_<year>"
-  e.g. "ricavi_operativi_2024", "ebit_2023", "numero_dipendenti_2022"
+Numeric columns (replace <year> with 2022, 2023, or 2024):
+  ricavi_operativi_<year>
+  totale_valore_produzione_<year>
+  totale_costi_produzione_<year>
+  ammortamenti_e_svalutazioni_<year>
+  ebit_<year>
+  immobilizzazioni_immateriali_<year>
+  immobilizzazioni_materiali_<year>
+  crediti_verso_clienti_<year>
+  disponibilita_liquide_<year>
+  totale_debiti_<year>
+  debiti_entro_12_mesi_<year>
+  debiti_oltre_12_mesi_<year>
+  trattamento_fine_rapporto_<year>
+  numero_dipendenti_<year>
+  costo_personale_<year>
 """
 
-PROMPT_TEMPLATE = """You are a data filter generator for an Italian company database.
+PROMPT_TEMPLATE = """You are a PostgreSQL query generator for an Italian company database.
 
 SCHEMA:
 {schema}
 
 USER QUERY: "{query}"
 
-IMPORTANT: Return ONLY a single valid JSON object. No explanation. No markdown. No extra text before or after.
+IMPORTANT:
+- Return ONLY a single valid JSON object. No explanation. No markdown. No extra text.
+- Never use SELECT *  — always return only: id, denominazione, comune, codice_ateco
+- Always use parameterized-style values inside the JSON (not inline SQL injection)
+- Default year is 2024 if not specified
 
-The JSON must have this exact structure (omit keys that are not needed):
+Return this exact JSON structure:
 
 {{
-  "filters": [
-    {{
-      "field": "ricavi_operativi_2024",
-      "op": "gt",
-      "value": 15000000
-    }}
-  ],
-  "sort_by": null,
-  "sort_order": null,
-  "limit": null,
-  "growth": null
+  "where": "ebit_2023 > 1000000",
+  "order_by": "ebit_2023 DESC",
+  "limit": 3
 }}
 
-Operator values for "op": gt, lt, gte, lte, eq, contains, between
-For "between" also include "value2": <number>
-
-For growth queries use this shape (otherwise set growth to null):
-  "growth": {{
-    "field": "ricavi_operativi",
-    "from_year": "2022",
-    "to_year": "2024",
-    "op": "gt",
-    "percent": 10
-  }}
-
 Rules:
-- For shareholder/socio queries: field = "socio_1", op = "contains"
-- For admin queries: field = "amministratore_2", op = "contains"
-- For city: field = "comune", op = "eq", value in UPPERCASE
+- "where" : valid PostgreSQL WHERE clause (without the word WHERE). Use AND/OR as needed. For no filter use "1=1"
+- "order_by" : column + ASC/DESC, or null if no sorting needed
+- "limit" : integer or null
+- For "top N by X"    → order_by = "X DESC", limit = N, where = "1=1"
+- For "bottom N by X" → order_by = "X ASC",  limit = N, where = "1=1"
+- For city filter     → comune = 'ROMA'  (always UPPERCASE string)
+- For name search     → denominazione ILIKE '%keyword%'
+- For socio/shareholder search → (socio_1 ILIKE '%name%' OR socio_2 ILIKE '%name%' OR socio_3 ILIKE '%name%' OR socio_4 ILIKE '%name%' OR socio_5 ILIKE '%name%')
+- For admin search    → (amministratore_2 ILIKE '%name%' OR amministratore_3 ILIKE '%name%' OR amministratore_4 ILIKE '%name%' OR amministratore_5 ILIKE '%name%')
+- For growth queries  → use: (to_year_col - from_year_col) / NULLIF(ABS(from_year_col), 0) * 100 > percent
 - "15 million" = 15000000, "1.5 million" = 1500000
-- Default year is 2024 if not specified
-- growth must be null if the query is NOT about growth/increase/change over time
 - Return ONLY the JSON object, nothing else
 """
 
 
-# ── Load data from DB via pagination ──────────────────────────────────────────
-
-def load_data() -> list[dict]:
-    """Fetch all records from DB using pagination (100 per page)."""
-    all_records = []
-    page = 1
-
-    while True:
-        batch = get_all_records_italy(page=page)
-        if not batch:
-            break
-        all_records.extend(batch)
-        page += 1
-
-    print(f"📦 Loaded {len(all_records)} records from DB.")
-    return all_records
-
-
 # ── Helpers ────────────────────────────────────────────────────────────────────
-
-def _num(company: dict, field: str) -> float | None:
-    v = company.get(field)
-    if v is None:
-        return None
-    try:
-        return float(str(v).replace(",", "."))
-    except ValueError:
-        return None
-
 
 def _extract_json(text: str) -> dict:
     text = re.sub(r"```(?:json)?", "", text)
@@ -150,9 +111,23 @@ def _extract_json(text: str) -> dict:
                 try:
                     return json.loads(candidate)
                 except json.JSONDecodeError as e:
-                    raise ValueError(f"Found JSON-like block but it's invalid: {e}\n{candidate}")
+                    raise ValueError(f"Invalid JSON block: {e}\n{candidate}")
 
-    raise ValueError(f"Could not find a complete JSON object in:\n{text}")
+    raise ValueError(f"Could not find complete JSON in:\n{text}")
+
+
+def _sanitize_where(where: str) -> str:
+    """
+    Basic safety check — block obviously dangerous SQL keywords.
+    LLM output is never fully trusted.
+    """
+    blocked = ["drop", "delete", "insert", "update", "truncate",
+               "alter", "create", "exec", "execute", "--", ";"]
+    lower = where.lower()
+    for word in blocked:
+        if word in lower:
+            raise ValueError(f"Unsafe SQL keyword detected in WHERE clause: '{word}'")
+    return where
 
 
 # ── Ollama call ────────────────────────────────────────────────────────────────
@@ -177,130 +152,45 @@ def _ask_ollama(query: str) -> dict:
     return _extract_json(raw_text)
 
 
-# ── Filter logic ───────────────────────────────────────────────────────────────
-
-OP_MAP = {">": "gt", ">=": "gte", "<": "lt", "<=": "lte", "=": "eq", "==": "eq"}
-
-
-def _apply_filter(company: dict, f: dict) -> bool:
-    field = f.get("field", "")
-    op    = OP_MAP.get(f.get("op", ""), f.get("op", ""))
-    value = f.get("value")
-
-    if value is None:
-        return True
-
-    # String ops
-    if op == "contains":
-        # Check all socio/amministratore variants e.g. socio_1..5
-        base = re.sub(r"_\d+$", "", field)
-        for i in range(1, 6):
-            cell = str(company.get(f"{base}_{i}", "")).upper()
-            if str(value).upper() in cell:
-                return True
-        cell = str(company.get(field, "")).upper()
-        return str(value).upper() in cell
-
-    if op == "eq":
-        num = _num(company, field)
-        if num is not None:
-            try:
-                return num == float(str(value).replace(",", ""))
-            except (ValueError, TypeError):
-                pass
-        cell = str(company.get(field, "")).upper()
-        return cell == str(value).upper()
-
-    # Numeric ops
-    num = _num(company, field)
-    if num is None:
-        return False
-
-    try:
-        val = float(str(value).replace(",", ""))
-    except (ValueError, TypeError):
-        return False
-
-    if op == "gt":  return num >  val
-    if op == "gte": return num >= val
-    if op == "lt":  return num <  val
-    if op == "lte": return num <= val
-    if op == "between":
-        try:
-            val2 = float(str(f.get("value2", value)).replace(",", ""))
-        except (ValueError, TypeError):
-            return False
-        return val <= num <= val2
-
-    return True
-
-
-def _apply_growth(company: dict, g: dict) -> bool:
-    field = g.get("field")
-    y1    = g.get("from_year", "2022")
-    y2    = g.get("to_year",   "2024")
-    op    = OP_MAP.get(g.get("op", "gt"), g.get("op", "gt"))
-    pct   = g.get("percent")
-
-    if not field or pct is None:
-        return True
-
-    try:
-        pct = float(pct)
-    except (ValueError, TypeError):
-        return True
-
-    v1 = _num(company, f"{field}_{y1}")
-    v2 = _num(company, f"{field}_{y2}")
-    if v1 is None or v2 is None or v1 == 0:
-        return False
-
-    growth = (v2 - v1) / abs(v1) * 100
-    if op == "gt":  return growth >  pct
-    if op == "gte": return growth >= pct
-    if op == "lt":  return growth <  pct
-    if op == "lte": return growth <= pct
-    return False
-
-
 # ── Main search function ───────────────────────────────────────────────────────
 
 def search(query: str) -> list[dict]:
-    print(f"\n🔍 Query : {query}")
+    print(f"\n🔍 Query: {query}")
 
-    # 1. Ask local LLM for filter plan
+    # 1. Ask LLM for SQL fragments only
     plan = _ask_ollama(query)
-    print(f"📋 Filter plan:\n{json.dumps(plan, indent=2, ensure_ascii=False)}\n")
+    print(f"📋 SQL plan:\n{json.dumps(plan, indent=2, ensure_ascii=False)}\n")
 
-    # 2. Load all data from DB
-    companies = load_data()
-    result = list(companies)
+    # 2. Extract and sanitize
+    where    = _sanitize_where(plan.get("where") or "1=1")
+    order_by = plan.get("order_by")
+    limit    = plan.get("limit")
 
-    # 3. Apply filters
-    for f in plan.get("filters") or []:
-        result = [c for c in result if _apply_filter(c, f)]
+    # 3. Build final SQL — DB does all the heavy lifting
+    sql = f"""
+        SELECT id, denominazione, comune, codice_ateco
+        FROM italy_companies_master_list
+        WHERE {where}
+    """
+    if order_by:
+        sql += f" ORDER BY {order_by}"
 
-    # 4. Apply growth filter
-    growth = plan.get("growth")
-    if isinstance(growth, dict) and growth.get("field") and growth.get("percent") is not None:
-        result = [c for c in result if _apply_growth(c, growth)]
-
-    # 5. Sort
-    sort_by    = plan.get("sort_by")
-    sort_order = plan.get("sort_order") or "desc"
-    if sort_by:
-        result.sort(
-            key=lambda c: _num(c, sort_by) or 0,
-            reverse=(sort_order.lower() == "desc"),
-        )
-
-    # 6. Limit
-    limit = plan.get("limit")
     if limit:
         try:
-            result = result[:int(limit)]
+            sql += f" LIMIT {int(limit)}"
         except (ValueError, TypeError):
             pass
 
-    print(f"✅ {len(result)} result(s) found.")
-    return result
+    print(f"📝 SQL:\n{sql.strip()}\n")
+
+    # 4. Run against DB — no data ever loaded into memory
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(sql)
+            results = [dict(row) for row in cur.fetchall()]
+    finally:
+        conn.close()
+
+    print(f"✅ {len(results)} result(s) found.")
+    return results

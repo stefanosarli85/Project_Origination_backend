@@ -511,3 +511,91 @@ def get_all_records_italy(page: int):
             return [dict(zip(columns, row)) for row in rows]
     finally:
         conn.close()
+
+from typing import Optional
+
+def column_search_italy(
+    company_code: str = "",
+    company_name: str = "",
+    city: str = "",
+    industry_code: str = "",
+    revenue_min: Optional[float] = None,
+    revenue_max: Optional[float] = None,
+    ebit_min: Optional[float] = None,
+    ebit_max: Optional[float] = None,
+    employees_min: Optional[float] = None,
+    employees_max: Optional[float] = None,
+):
+    params = []
+    conditions = []
+
+    # ── TEXT FILTERS ──────────────────────────────────────────────
+    if company_code and company_code.strip():
+        conditions.append("(codice_fiscale ILIKE %s OR partita_iva ILIKE %s)")
+        like = f"%{company_code.strip()}%"
+        params.extend([like, like])
+
+    if company_name and company_name.strip():
+        conditions.append("denominazione ILIKE %s")
+        params.append(f"%{company_name.strip()}%")
+
+    if city and city.strip():
+        conditions.append("comune ILIKE %s")
+        params.append(f"%{city.strip()}%")
+
+    if industry_code and industry_code.strip():
+        conditions.append("codice_ateco ILIKE %s")
+        params.append(f"%{industry_code.strip()}%")
+
+    # ── NUMERIC FILTERS ───────────────────────────────────────────
+    if revenue_min is not None:
+        conditions.append("ricavi_operativi_2024 >= %s")
+        params.append(revenue_min)
+
+    if revenue_max is not None:
+        conditions.append("ricavi_operativi_2024 <= %s")
+        params.append(revenue_max)
+
+    if ebit_min is not None:
+        conditions.append("ebit_2024 >= %s")
+        params.append(ebit_min)
+
+    if ebit_max is not None:
+        conditions.append("ebit_2024 <= %s")
+        params.append(ebit_max)
+
+    if employees_min is not None:
+        conditions.append("numero_dipendenti_2024 >= %s")
+        params.append(employees_min)
+
+    if employees_max is not None:
+        conditions.append("numero_dipendenti_2024 <= %s")
+        params.append(employees_max)
+
+    # ── BUILD & EXECUTE ───────────────────────────────────────────
+    where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    sql = f"""
+        SELECT
+            codice_fiscale,
+            partita_iva,
+            denominazione,
+            comune,
+            codice_ateco,
+            ricavi_operativi_2024,
+            ebit_2024,
+            numero_dipendenti_2024
+        FROM italy_companies_master_list
+        {where_clause}
+        ORDER BY id
+    """
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            columns = [desc[0] for desc in cur.description]
+            rows = cur.fetchall()
+            return [dict(zip(columns, row)) for row in rows]
+    finally:
+        conn.close()
