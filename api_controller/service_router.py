@@ -1,7 +1,9 @@
 import asyncio
+from typing import Optional
 from fastapi import Form
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
+
 
 from nlp_search.ollama_services import _ask_ollama, search
 from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
@@ -124,6 +126,7 @@ def search_italy_by_columns(
         employees_min=employees_min,
         employees_max=employees_max,
     )
+
     return {
         "total": len(records),
         "data": records
