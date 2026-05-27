@@ -72,16 +72,43 @@ def get_master_data_of_italy(page: int = 1):
     return {"page": page, "data": records}
 
 
+def parse_numeric_input(value: str) -> Optional[float]:
+    """
+    Parses user input like:
+    '1.5M' -> 1500000.0
+    '500K' -> 500000.0
+    '1000' -> 1000.0
+    '1.2m' -> 1200000.0  (case insensitive)
+    """
+    if value is None:
+        return None
+
+    value = value.strip().upper()
+
+    if not value:
+        return None
+
+    try:
+        if value.endswith("M"):
+            return float(value[:-1]) * 1_000_000
+        elif value.endswith("K"):
+            return float(value[:-1]) * 1_000
+        else:
+            return float(value)
+    except ValueError:
+        return None  # invalid input, just ignore the filter
+
+
 @router.get("/italy-search-columns")
 def search_italy_by_columns(
     company_code: str = "",
     company_name: str = "",
     city: str = "",
     industry_code: str = "",
-    revenue_min: float = None,
-    revenue_max: float = None,
-    ebit_min: float = None,
-    ebit_max: float = None,
+    revenue_min: str = "",    # changed from float to str
+    revenue_max: str = "",    # changed from float to str
+    ebit_min: str = "",       # changed from float to str
+    ebit_max: str = "",       # changed from float to str
     employees_min: float = None,
     employees_max: float = None,
 ):
@@ -90,10 +117,10 @@ def search_italy_by_columns(
         company_name=company_name,
         city=city,
         industry_code=industry_code,
-        revenue_min=revenue_min,
-        revenue_max=revenue_max,
-        ebit_min=ebit_min,
-        ebit_max=ebit_max,
+        revenue_min=parse_numeric_input(revenue_min),    # parsed here
+        revenue_max=parse_numeric_input(revenue_max),    # parsed here
+        ebit_min=parse_numeric_input(ebit_min),          # parsed here
+        ebit_max=parse_numeric_input(ebit_max),          # parsed here
         employees_min=employees_min,
         employees_max=employees_max,
     )
