@@ -75,13 +75,6 @@ def get_master_data_of_italy(page: int = 1):
 
 
 def parse_numeric_input(value: str) -> Optional[float]:
-    """
-    Parses user input like:
-    '1.5M' -> 1500000.0
-    '500K' -> 500000.0
-    '1000' -> 1000.0
-    '1.2m' -> 1200000.0  (case insensitive)
-    """
     if value is None:
         return None
 
@@ -89,6 +82,9 @@ def parse_numeric_input(value: str) -> Optional[float]:
 
     if not value:
         return None
+
+    # Remove commas (e.g. "50,000,000" -> "50000000")
+    value = value.replace(",", "")
 
     try:
         if value.endswith("M"):
@@ -98,7 +94,7 @@ def parse_numeric_input(value: str) -> Optional[float]:
         else:
             return float(value)
     except ValueError:
-        return None  # invalid input, just ignore the filter
+        return None
 
 
 @router.get("/italy-search-columns")
