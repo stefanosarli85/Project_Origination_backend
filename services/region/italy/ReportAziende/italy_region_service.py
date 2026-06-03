@@ -4,6 +4,7 @@ from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
 import json
 
+from dynamoDB.italy_region_services import check_schedules_availability, save_company_schedules, get_company_schedules
 from repository.respository_connection import get_connection
 from services.region.italy.ReportAziende.api_integration import get_company_details_form_reportaziende
 
@@ -479,13 +480,21 @@ def get_company_code(cid: int):
 # FUNCTION 4: GET COMPANY DETAILS FROM REPORTAZIENDE AND SAVE IT IN DATABASE
 # =========================================================
 
-def get_and_save_italy_company(cid: str) -> dict:
-    data = get_company_details_form_reportaziende(cid)
-    if data is None:
-        return {}
-    company_id = save_italy_company(data)
-    company_code = get_company_code(company_id)
-    return get_company_full_data(company_code)
+def get_and_save_company(company_code: str, schedules: list[str]) -> dict:
+    # Step 1: Check which schedules are missing
+    availability = check_schedules_availability(company_code, schedules)
+    missing = [a["schedule"] for a in availability if not a["is_data_available"]]
+
+    # Step 2: Fetch missing schedules from API
+    if missing:
+        print("i am missing")
+        data = get_company_details_form_reportaziende(company_code, missing)
+        if data:
+            save_company_schedules(data, missing)
+
+    # Step 3: Return requested schedules from DB
+    return get_company_schedules(company_code, schedules)
+
 
 
 def get_all_records_italy(page: int):

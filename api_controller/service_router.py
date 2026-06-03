@@ -1,14 +1,14 @@
 import asyncio
 from typing import Optional
 from fastapi import Form
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 
 from nlp_search.ollama_services import _ask_ollama, search
 from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
 from services.region.italy.ReportAziende.italy_region_service import check_if_data_available_in_db, \
-    get_company_full_data, column_search_italy,get_and_save_italy_company, get_all_records_italy
+    get_company_full_data, column_search_italy, get_all_records_italy, get_and_save_company
 from services.region.italy.openapi.financial_documents import fetch_and_upload_balance_sheet
 
 
@@ -44,9 +44,8 @@ def get_company(company_id: str):
 
 
 @router.post("/italy/company/{cid}")
-def fetch_and_save_company(cid: str):
-    return get_and_save_italy_company(cid)
-
+def fetch_and_save_company(cid: str, schedules: list[str] = Query(default=["ANA"])):
+    return get_and_save_company(cid, schedules)
 
 @router.post("/fetch-financial-document/{cf_piva_id}")
 def fetch_financial_document(cf_piva_id: str):
