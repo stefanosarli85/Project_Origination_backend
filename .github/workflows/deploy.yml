@@ -70,6 +70,9 @@ jobs:
               "$DB_HOST" "$DB_USER" "$DB_PASSWORD" "$DB_NAME" "$DB_PORT" "$API_KEY" \
               "$AWS_ACCESS_KEY_ID" "$AWS_SECRET_ACCESS_KEY" "$AWS_REGION" "$OPENAI_TOKEN" "$REPOT_AZIENDE_TOKEN" > .env
 
+            # Free up disk space before building
+            sudo docker system prune -af
+
             sudo docker build -t project_origination_backend .
             sudo docker stop project-origination || true
             sudo docker rm project-origination || true
