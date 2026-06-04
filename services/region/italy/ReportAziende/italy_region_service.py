@@ -585,15 +585,7 @@ def column_search_italy(
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
     sql = f"""
-        SELECT
-            codice_fiscale,
-            partita_iva,
-            denominazione,
-            comune,
-            codice_ateco,
-            ricavi_operativi_2024,
-            ebit_2024,
-            numero_dipendenti_2024
+        SELECT *
         FROM italy_companies_master_list
         {where_clause}
         ORDER BY id
