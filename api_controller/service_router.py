@@ -33,14 +33,14 @@ async def run_italian_pipeline(company_code: str = Form(...)):
 
 # ITALY
 
-@router.get("/italy/check_db/{cid}")
-def check_db(cid: str):
-    return {"available": check_if_data_available_in_db(cid)}
-
-
-@router.get("/italy/company/{company_id}")
-def get_company(company_id: str):
-    return get_company_full_data(company_id)
+# @router.get("/italy/check_db/{cid}")
+# def check_db(cid: str):
+#     return {"available": check_if_data_available_in_db(cid)}
+#
+#
+# @router.get("/italy/company/{company_id}")
+# def get_company(company_id: str):
+#     return get_company_full_data(company_id)
 
 
 @router.post("/italy/company/{cid}")

@@ -480,20 +480,66 @@ def get_company_code(cid: int):
 # FUNCTION 4: GET COMPANY DETAILS FROM REPORTAZIENDE AND SAVE IT IN DATABASE
 # =========================================================
 
+NON_PERSISTENT_SCHEDULES = {"85"}
+
 def get_and_save_company(company_code: str, schedules: list[str]) -> dict:
-    # Step 1: Check which schedules are missing
-    availability = check_schedules_availability(company_code, schedules)
-    missing = [a["schedule"] for a in availability if not a["is_data_available"]]
 
-    # Step 2: Fetch missing schedules from API
+    # Check availability
+    availability = check_schedules_availability(
+        company_code,
+        schedules
+    )
+
+    missing = [
+        item["schedule"]
+        for item in availability
+        if not item["is_data_available"]
+    ]
+
+    # Fetch only missing schedules
+    api_data = None
+
     if missing:
-        print("i am missing")
-        data = get_company_details_form_reportaziende(company_code, missing)
-        if data:
-            save_company_schedules(data, missing)
+        print(f"Fetching schedules from API: {missing}")
 
-    # Step 3: Return requested schedules from DB
-    return get_company_schedules(company_code, schedules)
+        api_data = get_company_details_form_reportaziende(
+            company_code,
+            missing
+        )
+
+        if api_data:
+            save_company_schedules(
+                api_data,
+                missing
+            )
+
+    # Load DB data
+    response = get_company_schedules(
+        company_code,
+        schedules
+    )
+
+    if not response.get("success"):
+        return response
+
+    # Inject live schedules (85 etc.) into response
+    if api_data:
+        schede = api_data.get("schede", {})
+
+        for schedule in NON_PERSISTENT_SCHEDULES:
+
+            if schedule not in schedules:
+                continue
+
+            raw = schede.get(schedule)
+
+            if raw is not None:
+                response["data"][schedule] = raw.get(
+                    "dati",
+                    raw
+                )
+
+    return response
 
 
 

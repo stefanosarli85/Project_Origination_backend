@@ -95,6 +95,7 @@ def _floats_to_decimal(obj):
         return [_floats_to_decimal(i) for i in obj]
     return obj
 
+NON_PERSISTENT_SCHEDULES = {"85"}
 
 def check_schedules_availability(company_code: str, schedules: list[str]) -> list[dict]:
     table = dynamodb.Table("italy_companies")
@@ -106,15 +107,27 @@ def check_schedules_availability(company_code: str, schedules: list[str]) -> lis
     item = response.get("Item", {})
 
     result = []
+
     for schedule in schedules:
+
+        # Always fetch these from API
+        if schedule in NON_PERSISTENT_SCHEDULES:
+            result.append({
+                "schedule": schedule,
+                "is_data_available": False
+            })
+            continue
+
         col = SCHEDULE_KEY_MAP.get(schedule)
+
         result.append({
             "schedule": schedule,
-            "is_data_available": col in item and item[col] is not None
+            "is_data_available": (
+                col in item and item[col] is not None
+            )
         })
 
     return result
-
 
 
 def save_company_schedules(data: dict, schedules: list[str]):
@@ -125,29 +138,47 @@ def save_company_schedules(data: dict, schedules: list[str]):
 
     update_parts = []
     expr_attr_names = {}
-    expr_attr_values = {":updated_at": _now()}
+    expr_attr_values = {
+        ":updated_at": _now()
+    }
 
     for schedule in schedules:
+
+        # Never persist restricted schedules
+        if schedule in NON_PERSISTENT_SCHEDULES:
+            print(
+                f"⚠️ Schedule {schedule} is non-persistent. Skipping save."
+            )
+            continue
+
         col = SCHEDULE_KEY_MAP.get(schedule)
+
         if col is None:
-            print(f"⚠️  Unknown schedule '{schedule}', skipping.")
+            print(f"⚠️ Unknown schedule '{schedule}', skipping.")
             continue
 
         raw = schede.get(schedule)
+
         if raw is None:
-            print(f"⚠️  Schedule '{schedule}' not in response, skipping.")
+            print(
+                f"⚠️ Schedule '{schedule}' not found in API response."
+            )
             continue
 
-        attr_name  = f"#col_{col}"
+        attr_name = f"#col_{col}"
         attr_value = f":val_{col}"
 
-        expr_attr_names[attr_name]   = col
-        expr_attr_values[attr_value] = _floats_to_decimal(raw.get("dati", raw))
+        expr_attr_names[attr_name] = col
+        expr_attr_values[attr_value] = _floats_to_decimal(
+            raw.get("dati", raw)
+        )
 
-        update_parts.append(f"{attr_name} = {attr_value}")
+        update_parts.append(
+            f"{attr_name} = {attr_value}"
+        )
 
     if not update_parts:
-        print("⚠️  Nothing to save.")
+        print("⚠️ Nothing to save.")
         return
 
     expr_attr_names["#updated_at"] = "updated_at"
@@ -160,7 +191,11 @@ def save_company_schedules(data: dict, schedules: list[str]):
         ExpressionAttributeValues=expr_attr_values,
     )
 
-    print(f"✅ Saved schedules {schedules} for {company_code}")
+    print(
+        f"✅ Saved schedules "
+        f"{[s for s in schedules if s not in NON_PERSISTENT_SCHEDULES]} "
+        f"for {company_code}"
+    )
 
 
 def get_company_schedules(company_code: str, schedules: list[str]) -> dict:
