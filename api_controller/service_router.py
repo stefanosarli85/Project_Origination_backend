@@ -102,27 +102,31 @@ def search_italy_by_columns(
     company_name: str = "",
     city: str = "",
     industry_code: str = "",
-    revenue_min: str = "",    # changed from float to str
-    revenue_max: str = "",    # changed from float to str
-    ebit_min: str = "",       # changed from float to str
-    ebit_max: str = "",       # changed from float to str
+    revenue_min: str = "",
+    revenue_max: str = "",
+    ebit_min: str = "",
+    ebit_max: str = "",
     employees_min: float = None,
     employees_max: float = None,
+    sort_by: str = "id",          # e.g. "revenue", "ebit", "employees"
+    sort_order: str = "asc",      # "asc" or "desc"
+    page: int = 1,
+    limit: int = 100,
 ):
-    records = column_search_italy(
+    result = column_search_italy(
         company_code=company_code,
         company_name=company_name,
         city=city,
         industry_code=industry_code,
-        revenue_min=parse_numeric_input(revenue_min),    # parsed here
-        revenue_max=parse_numeric_input(revenue_max),    # parsed here
-        ebit_min=parse_numeric_input(ebit_min),          # parsed here
-        ebit_max=parse_numeric_input(ebit_max),          # parsed here
+        revenue_min=parse_numeric_input(revenue_min),
+        revenue_max=parse_numeric_input(revenue_max),
+        ebit_min=parse_numeric_input(ebit_min),
+        ebit_max=parse_numeric_input(ebit_max),
         employees_min=employees_min,
         employees_max=employees_max,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        page=page,
+        limit=limit,
     )
-
-    return {
-        "total": len(records),
-        "data": records
-    }
+    return result

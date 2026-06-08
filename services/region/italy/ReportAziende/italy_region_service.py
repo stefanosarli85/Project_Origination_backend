@@ -1,4 +1,6 @@
 import os
+from typing import Optional
+
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
@@ -567,7 +569,14 @@ def get_all_records_italy(page: int):
     finally:
         conn.close()
 
-from typing import Optional
+SORTABLE_COLUMNS = {
+    "revenue": "ricavi_operativi_2024",
+    "ebit": "ebit_2024",
+    "employees": "numero_dipendenti_2024",
+    "company_name": "denominazione",
+    "city": "comune",
+    "id": "id",
+}
 
 def column_search_italy(
     company_code: str = "",
@@ -580,6 +589,10 @@ def column_search_italy(
     ebit_max: Optional[float] = None,
     employees_min: Optional[float] = None,
     employees_max: Optional[float] = None,
+    sort_by: str = "id",
+    sort_order: str = "asc",   # "asc" | "desc"
+    page: int = 1,
+    limit: int = 100,
 ):
     params = []
     conditions = []
@@ -606,43 +619,55 @@ def column_search_italy(
     if revenue_min is not None:
         conditions.append("ricavi_operativi_2024 >= %s")
         params.append(revenue_min)
-
     if revenue_max is not None:
         conditions.append("ricavi_operativi_2024 <= %s")
         params.append(revenue_max)
-
     if ebit_min is not None:
         conditions.append("ebit_2024 >= %s")
         params.append(ebit_min)
-
     if ebit_max is not None:
         conditions.append("ebit_2024 <= %s")
         params.append(ebit_max)
-
     if employees_min is not None:
         conditions.append("numero_dipendenti_2024 >= %s")
         params.append(employees_min)
-
     if employees_max is not None:
         conditions.append("numero_dipendenti_2024 <= %s")
         params.append(employees_max)
 
-    # ── BUILD & EXECUTE ───────────────────────────────────────────
+    # ── BUILD QUERY ───────────────────────────────────────────────
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
-    sql = f"""
+    # Safe sort column (whitelist, never interpolate user input directly)
+    order_col = SORTABLE_COLUMNS.get(sort_by, "id")
+    order_dir = "DESC" if sort_order.lower() == "desc" else "ASC"
+
+    # NULLS LAST so NULL revenues don't float to the top
+    offset = (page - 1) * limit
+
+    count_sql = f"SELECT COUNT(*) FROM italy_companies_master_list {where_clause}"
+
+    data_sql = f"""
         SELECT *
         FROM italy_companies_master_list
         {where_clause}
-        ORDER BY id
+        ORDER BY {order_col} {order_dir} NULLS LAST
+        LIMIT %s OFFSET %s
     """
 
     conn = get_connection()
     try:
         with conn.cursor() as cur:
-            cur.execute(sql, params)
+            # total count (same filters, no pagination)
+            cur.execute(count_sql, params)
+            total = cur.fetchone()[0]
+
+            # paginated data
+            cur.execute(data_sql, params + [limit, offset])
             columns = [desc[0] for desc in cur.description]
             rows = cur.fetchall()
-            return [dict(zip(columns, row)) for row in rows]
+            data = [dict(zip(columns, row)) for row in rows]
+
+        return {"total": total, "page": page, "limit": limit, "data": data}
     finally:
         conn.close()
