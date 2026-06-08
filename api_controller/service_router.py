@@ -1,10 +1,13 @@
 import asyncio
+from datetime import date
 from typing import Optional
 from fastapi import Form
 from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
+from enum import Enum
 
-
+from kyc.open_api_kyc_api import kyc_person, kyc_company, KYCPersonRequest, KYCCompanyRequest
+from news.company_news import get_company_news
 from nlp_search.ollama_services import _ask_ollama, search
 from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
 from services.region.italy.ReportAziende.italy_region_service import check_if_data_available_in_db, \
@@ -130,3 +133,35 @@ def search_italy_by_columns(
         limit=limit,
     )
     return result
+
+
+@router.get("/fetch-news")
+def fetch_news(company_name: str):
+    return get_company_news(company_name)
+
+
+class KYCType(str, Enum):
+    person = "person"
+    company = "company"
+
+class KYCRequest(BaseModel):
+    type: KYCType
+    # Person fields
+    firstName: str | None = None
+    lastName: str | None = None
+    birthDate: date | None = None
+    # Company fields
+    name: str | None = None
+
+@router.post("/check")
+async def kyc_check(body: KYCRequest):
+    if body.type == KYCType.person:
+        return await kyc_person(KYCPersonRequest(
+            firstName=body.firstName,
+            lastName=body.lastName,
+            birthDate=body.birthDate
+        ))
+    else:
+        return await kyc_company(KYCCompanyRequest(
+            name=body.name
+        ))
