@@ -10,19 +10,15 @@ HEADERS = {
 }
 
 
-# ── Pydantic Models ──────────────────────────────────────────────
-
 class KYCPersonRequest(BaseModel):
     firstName: str
     lastName: str
-    birthDate: date                 # yyyy-mm-dd
+    birthDate: date
 
 
 class KYCCompanyRequest(BaseModel):
     name: str
 
-
-# ── Functions ────────────────────────────────────────────────────
 
 async def kyc_person(body: KYCPersonRequest) -> dict:
     payload = {
@@ -50,19 +46,3 @@ async def kyc_company(body: KYCCompanyRequest) -> dict:
         r = await client.post(f"{BASE_URL}/WW-kyc-full", json=payload, headers=HEADERS, timeout=30)
         r.raise_for_status()
         return r.json()
-
-
-# ── Usage ────────────────────────────────────────────────────────
-
-# result = await kyc_person(KYCPersonRequest(firstName="Mario", lastName="Rossi", birthDate="1980-05-14"))
-# result = await kyc_company(KYCCompanyRequest(name="Acme S.r.l."))
-
-import asyncio
-
-result = asyncio.run(kyc_person(KYCPersonRequest(
-    firstName="Stefano",
-    lastName="Sarli",
-    birthDate="1985-09-13"
-)))
-
-print(result)
