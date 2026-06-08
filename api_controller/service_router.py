@@ -153,7 +153,7 @@ class KYCRequest(BaseModel):
     # Company fields
     name: str | None = None
 
-@router.post("/check")
+@router.post("/kyc-check")
 async def kyc_check(body: KYCRequest):
     if body.type == KYCType.person:
         return await kyc_person(KYCPersonRequest(
