@@ -83,4 +83,4 @@ jobs:
               --name project-origination \
               project_origination_backend
 
-            echo "✅ Backend deployed!"
+            echo "Backend deployed!"
