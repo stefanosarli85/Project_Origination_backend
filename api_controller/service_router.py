@@ -113,6 +113,8 @@ def search_italy_by_columns(
     employees_max: float = None,
     sort_by: str = "id",          # e.g. "revenue", "ebit", "employees"
     sort_order: str = "asc",      # "asc" or "desc"
+    main_industry: str = "",
+    sub_industry: str = "",
     page: int = 1,
     limit: int = 100,
 ):
@@ -129,6 +131,8 @@ def search_italy_by_columns(
         employees_max=employees_max,
         sort_by=sort_by,
         sort_order=sort_order,
+        main_industry=main_industry,
+        sub_industry=sub_industry,
         page=page,
         limit=limit,
     )

@@ -591,6 +591,8 @@ def column_search_italy(
     employees_max: Optional[float] = None,
     sort_by: str = "id",
     sort_order: str = "asc",   # "asc" | "desc"
+    main_industry: str = "",
+    sub_industry: str = "",
     page: int = 1,
     limit: int = 100,
 ):
@@ -634,6 +636,14 @@ def column_search_italy(
     if employees_max is not None:
         conditions.append("numero_dipendenti_2024 <= %s")
         params.append(employees_max)
+
+    if main_industry and main_industry.strip():
+        conditions.append("main_industry ILIKE %s")
+        params.append(f"%{main_industry.strip()}%")
+
+    if sub_industry and sub_industry.strip():
+        conditions.append("sub_industry ILIKE %s")
+        params.append(f"%{sub_industry.strip()}%")
 
     # ── BUILD QUERY ───────────────────────────────────────────────
     where_clause = ("WHERE " + " AND ".join(conditions)) if conditions else ""
