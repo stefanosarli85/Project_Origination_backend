@@ -6,9 +6,9 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from enum import Enum
 
+from dynamoDB.italy_region_services import get_company_schedule_status
 from kyc.open_api_kyc_api import kyc_person, kyc_company, KYCPersonRequest, KYCCompanyRequest
 from news.company_news import get_company_news
-from nlp_search.ollama_services import _ask_ollama, search
 from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
 from services.region.italy.ReportAziende.italy_region_service import check_if_data_available_in_db, \
     get_company_full_data, column_search_italy, get_all_records_italy, get_and_save_company
@@ -34,17 +34,6 @@ async def run_italian_pipeline(company_code: str = Form(...)):
     )
     return response
 
-# ITALY
-
-# @router.get("/italy/check_db/{cid}")
-# def check_db(cid: str):
-#     return {"available": check_if_data_available_in_db(cid)}
-#
-#
-# @router.get("/italy/company/{company_id}")
-# def get_company(company_id: str):
-#     return get_company_full_data(company_id)
-
 
 @router.post("/italy/company/{cid}")
 def fetch_and_save_company(cid: str, schedules: list[str] = Query(default=["ANA"])):
@@ -54,20 +43,6 @@ def fetch_and_save_company(cid: str, schedules: list[str] = Query(default=["ANA"
 def fetch_financial_document(cf_piva_id: str):
     return fetch_and_upload_balance_sheet(cf_piva_id)
 
-
-@router.post("/italy-search_query")
-async def search_query_endpoint(request: SearchRequest):
-    try:
-        company_ids = search(request.search)
-        return {
-            "query": request.search,
-            "total": len(company_ids),
-            "company_ids": company_ids
-        }
-    except RuntimeError as e:
-        raise HTTPException(status_code=503, detail=str(e))
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.get("/italy-get-all-records")
@@ -169,3 +144,8 @@ async def kyc_check(body: KYCRequest):
         return await kyc_company(KYCCompanyRequest(
             name=body.name
         ))
+
+
+@router.get("/get-schedule-status/{company_code}")
+def fetch_schedule_status(company_code: str):
+    return get_company_schedule_status(company_code)

@@ -1,6 +1,8 @@
 import boto3
 import os
 import json
+# from dotenv import load_dotenv
+# load_dotenv()
 
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
@@ -221,3 +223,38 @@ def get_company_schedules(company_code: str, schedules: list[str]) -> dict:
 def _now() -> str:
     from datetime import datetime, timezone
     return datetime.now(timezone.utc).isoformat()
+
+
+schedule_table = dynamodb.Table("italy_companies")
+
+
+SCHEDULE_COLUMNS = ["ANA", "CR", "PROT", "S05", "S10", "S20", "S30", "S40", "S50", "S60", "S70"]
+
+
+def get_company_schedule_status(company_code: str):
+    """
+    Returns whether each schedule column exists (non-null) for a given company_code.
+    """
+
+    response = schedule_table.get_item(
+        Key={
+            "company_code": company_code
+        }
+    )
+
+    item = response.get("Item", {})
+
+    if not item:
+        return {company_code: {k: False for k in SCHEDULE_COLUMNS}}
+
+    result = {}
+
+    for col in SCHEDULE_COLUMNS:
+        value = item.get(col)
+
+        # True if data exists, False otherwise
+        result[col] = value is not None
+
+    return {
+        company_code: result
+    }

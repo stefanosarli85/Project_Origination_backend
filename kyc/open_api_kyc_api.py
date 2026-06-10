@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from datetime import date
 
 BASE_URL = "https://risk.openapi.com"
-TOKEN = "6a2666eae9b723c3bb05fcf6"
+TOKEN = "6a27c83e4a8c5078cb0aad85"
 HEADERS = {
     "Authorization": f"Bearer {TOKEN}",
     "Content-Type": "application/json",
