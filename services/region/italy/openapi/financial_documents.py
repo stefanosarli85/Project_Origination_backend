@@ -97,8 +97,8 @@ def fetch_and_upload_balance_sheet(cf_piva_id: str, folder: str = "uploads") -> 
         if stato == "Dati disponibili":
             print("✅ Document is ready!")
             break
-        elif stato == "In ricerca":
-            print("🔄 Still processing, waiting 15 more seconds...")
+        elif stato in ("In ricerca", "In erogazione"):
+            print(f"🔄 Still processing ({stato}), waiting 15 more seconds...")
             continue
         else:
             raise Exception(f"❌ Unexpected status received: {stato}. Full response: {status_response}")
