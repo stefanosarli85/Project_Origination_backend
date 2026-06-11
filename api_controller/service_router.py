@@ -6,7 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from enum import Enum
 
-from dynamoDB.italy_region_services import get_company_schedule_status
+from dynamoDB.italy_region_services import get_company_schedule_status, is_report_available
 from kyc.open_api_kyc_api import kyc_person, kyc_company, KYCPersonRequest, KYCCompanyRequest
 from news.company_news import get_company_news
 from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
@@ -146,6 +146,11 @@ async def kyc_check(body: KYCRequest):
         ))
 
 
-@router.get("/get-schedule-status/{company_code}")
-def fetch_schedule_status(company_code: str):
-    return get_company_schedule_status(company_code)
+@router.get("/isDocumentAvailable/{companycode}")
+def check_document(companycode: str):
+    result = is_report_available(companycode)
+
+    return {
+        "companyCode": companycode,
+        **result
+    }

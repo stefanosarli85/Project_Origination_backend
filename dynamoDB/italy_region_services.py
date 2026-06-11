@@ -1,6 +1,8 @@
 import boto3
 import os
 import json
+from boto3.dynamodb.conditions import Attr
+
 # from dotenv import load_dotenv
 # load_dotenv()
 
@@ -258,3 +260,18 @@ def get_company_schedule_status(company_code: str):
     return {
         company_code: result
     }
+
+
+def is_report_available(company_code):
+    try:
+        response = table.scan(
+            FilterExpression=Attr("company_id").eq(str(company_code))
+        )
+
+        return {
+            "isReportAvailable": len(response.get("Items", [])) > 0
+        }
+
+    except Exception as e:
+        print(f"Error checking report availability: {e}")
+        return {"isReportAvailable": False}
