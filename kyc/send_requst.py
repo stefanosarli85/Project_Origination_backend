@@ -21,5 +21,3 @@ async def submit_kyc_person(first_name, last_name, tax_code):
         data = r.json()
         print(f"Request ID: {data['data']['id']}")
         print(f"State: {data['data']['state']}")
-
-asyncio.run(submit_kyc_person("Stefano", "Sarli", "SRLSFN85P13L328V"))

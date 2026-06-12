@@ -1,11 +1,11 @@
 import httpx
 
 TOKEN = "6a27c83e4a8c5078cb0aad85"
-REQUEST_ID = "6a2820cb31ec2f19cc068455"
+REQUEST_ID = "6a2ac1acde5e48ec86039c0a"
 
 def download_kyc_pdf(request_id: str, output_path: str = "kyc_report.pdf"):
     r = httpx.get(
-        f"https://risk.openapi.com/IT-report-persona/{request_id}/download",
+        f"https://risk.openapi.com/IT-report-azienda/{request_id}/download",
         headers={"Authorization": f"Bearer {TOKEN}"},
         timeout=60
     )

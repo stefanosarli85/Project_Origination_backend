@@ -1,17 +1,23 @@
 import asyncio
 from datetime import date
+from io import BytesIO
 from typing import Optional
 from fastapi import Form
-from fastapi import APIRouter, HTTPException, Query
+from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from enum import Enum
+from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 
-from dynamoDB.italy_region_services import get_company_schedule_status, is_report_available
-from kyc.open_api_kyc_api import kyc_person, kyc_company, KYCPersonRequest, KYCCompanyRequest
+from dynamoDB.italy_region_services import is_report_available, get_all_kyc_requests, get_company_kyc_request
+from kyc.kyc_global.global_kyc_api import kyc_person, kyc_company, KYCPersonRequest, KYCCompanyRequest
+from kyc.kyc_italy.italy_company_kyc_api import get_company_kyc_pdf, request_kyc_for_italian_company
+from kyc.kyc_italy.italy_individual_kyc_api import request_kyc_for_italian_individual, get_person_kyc_pdf
 from news.company_news import get_company_news
 from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
-from services.region.italy.ReportAziende.italy_region_service import check_if_data_available_in_db, \
-    get_company_full_data, column_search_italy, get_all_records_italy, get_and_save_company
+from services.region.italy.ReportAziende.italy_region_service import column_search_italy, get_all_records_italy, get_and_save_company
 from services.region.italy.openapi.financial_documents import fetch_and_upload_balance_sheet
 
 
@@ -118,13 +124,14 @@ def search_italy_by_columns(
 def fetch_news(company_name: str):
     return get_company_news(company_name)
 
+## KYC GLOBAL
 
-class KYCType(str, Enum):
+class KYCTypeGlobal(str, Enum):
     person = "person"
     company = "company"
 
-class KYCRequest(BaseModel):
-    type: KYCType
+class KYCRequestGlobal(BaseModel):
+    type: KYCTypeGlobal
     # Person fields
     firstName: str | None = None
     lastName: str | None = None
@@ -132,9 +139,9 @@ class KYCRequest(BaseModel):
     # Company fields
     name: str | None = None
 
-@router.post("/kyc-check")
-async def kyc_check(body: KYCRequest):
-    if body.type == KYCType.person:
+@router.post("/global/kyc-check")
+async def kyc_check(body: KYCRequestGlobal):
+    if body.type == KYCTypeGlobal.person:
         return await kyc_person(KYCPersonRequest(
             firstName=body.firstName,
             lastName=body.lastName,
@@ -144,6 +151,116 @@ async def kyc_check(body: KYCRequest):
         return await kyc_company(KYCCompanyRequest(
             name=body.name
         ))
+
+class KYCRequestIndividualItaly(BaseModel):
+    first_name: str
+    last_name: str
+    tax_code: str
+
+
+## KYC ITALY PERSON
+
+@router.post("/italy/individual/request-kyc")
+def create_person_kyc_request(payload: KYCRequestIndividualItaly):
+    try:
+        return request_kyc_for_italian_individual(
+            first_name=payload.first_name,
+            last_name=payload.last_name,
+            tax_code=payload.tax_code
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+@router.get("/italy/individual/retrieve-kyc-requests")
+def fetch_all_person_kyc_requests():
+    return get_all_kyc_requests()
+
+
+@router.get("/italy/individual/download-kyc-pdf/{request_id}")
+def download_person_kyc_pdf(request_id: str):
+    try:
+        result = get_person_kyc_pdf(request_id)
+
+        # PDF ready
+        if isinstance(result, BytesIO):
+            return StreamingResponse(
+                result,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f'attachment; filename="kyc_report_{request_id}.pdf"'
+                }
+            )
+
+        # Still processing
+        return JSONResponse(
+            status_code=200,
+            content=result
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+## KYC ITALY COMPANY
+class KYCRequestCompanyItaly(BaseModel):
+    company_name: str
+    vat_code: str
+    tax_code: Optional[str] = None
+
+
+@router.post("/italy/comp/request-kyc")
+def create_company_kyc_request(payload: KYCRequestCompanyItaly):
+    try:
+        return request_kyc_for_italian_company(
+            company_name=payload.company_name,
+            vat_code=payload.vat_code,
+            tax_code=payload.tax_code or payload.vat_code
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+@router.get("/italy/comp/retrieve-kyc-requests")
+def fetch_all_company_kyc_requests():
+    return get_company_kyc_request()
+
+
+@router.get("/italy/comp/download-kyc-pdf/{request_id}")
+def download_company_kyc_pdf(request_id: str):
+    try:
+        result = get_company_kyc_pdf(request_id)
+
+        # PDF is ready
+        if isinstance(result, BytesIO):
+            return StreamingResponse(
+                result,
+                media_type="application/pdf",
+                headers={
+                    "Content-Disposition": f'attachment; filename="company_kyc_report_{request_id}.pdf"'
+                }
+            )
+
+        # Report still processing
+        return JSONResponse(
+            status_code=200,
+            content=result
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 
 @router.get("/isDocumentAvailable/{companycode}")

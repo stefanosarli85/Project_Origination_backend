@@ -1,10 +1,12 @@
+from datetime import datetime
+
 import boto3
 import os
 import json
 from boto3.dynamodb.conditions import Attr
 
-# from dotenv import load_dotenv
-# load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
@@ -275,3 +277,121 @@ def is_report_available(company_code):
     except Exception as e:
         print(f"Error checking report availability: {e}")
         return {"isReportAvailable": False}
+
+
+kyc_request_table = dynamodb.Table("italy_kyc_request")
+
+
+def save_kyc_request_person(request_id, first_name, last_name, tax_code):
+    try:
+        kyc_request_table.put_item(
+            Item={
+                "request_id": request_id,
+                "first_name": first_name,
+                "last_name": last_name,
+                "tax_code": tax_code
+            }
+        )
+
+        return {
+            "success": True,
+            "request_id": request_id
+        }
+
+    except Exception as e:
+        print("Error saving KYC request:", str(e))
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+def get_all_kyc_requests():
+    try:
+        items = []
+
+        response = kyc_request_table.scan()
+        items.extend(response.get("Items", []))
+
+        while "LastEvaluatedKey" in response:
+            response = kyc_request_table.scan(
+                ExclusiveStartKey=response["LastEvaluatedKey"]
+            )
+            items.extend(response.get("Items", []))
+
+        return items
+
+    except Exception as e:
+        print("Error fetching KYC requests:", str(e))
+        return []
+
+
+
+company_kyc_request_table = dynamodb.Table("italy_company_kyc_request")
+
+
+def create_company_kyc_request_table():
+    try:
+        table = dynamodb.create_table(
+            TableName="italy_company_kyc_request",
+            KeySchema=[
+                {
+                    "AttributeName": "request_id",
+                    "KeyType": "HASH"
+                }
+            ],
+            AttributeDefinitions=[
+                {
+                    "AttributeName": "request_id",
+                    "AttributeType": "S"
+                }
+            ],
+            BillingMode="PAY_PER_REQUEST"
+        )
+
+        table.wait_until_exists()
+        print("Table created successfully")
+
+    except Exception as e:
+        print(f"Error creating table: {e}")
+
+
+def save_company_kyc_request(
+    request_id: str,
+    company_name: str,
+    vat_code: str,
+    tax_code: str = None
+):
+    try:
+        item = {
+            "request_id": request_id,
+            "company_name": company_name,
+            "vat_code": vat_code,
+            "tax_code": tax_code,
+            "created_at": datetime.utcnow().isoformat()
+        }
+
+        company_kyc_request_table.put_item(Item=item)
+
+        return {
+            "success": True,
+            "request_id": request_id
+        }
+
+    except Exception as e:
+        print(f"Error saving request: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+def get_company_kyc_request():
+    try:
+        response = company_kyc_request_table.scan()
+
+        return response.get("Items", [])
+
+    except Exception as e:
+        print(f"Error fetching requests: {e}")
+        return []
