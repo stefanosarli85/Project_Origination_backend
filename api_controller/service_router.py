@@ -11,7 +11,8 @@ from enum import Enum
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from dynamoDB.italy_region_services import is_report_available, get_all_kyc_requests, get_company_kyc_request
+from dynamoDB.italy_region_services import is_report_available, get_all_kyc_requests, get_company_kyc_request, \
+    get_company_schedule_status
 from kyc.kyc_global.global_kyc_api import kyc_person, kyc_company, KYCPersonRequest, KYCCompanyRequest
 from kyc.kyc_italy.italy_company_kyc_api import get_company_kyc_pdf, request_kyc_for_italian_company
 from kyc.kyc_italy.italy_individual_kyc_api import request_kyc_for_italian_individual, get_person_kyc_pdf
@@ -48,8 +49,6 @@ def fetch_and_save_company(cid: str, schedules: list[str] = Query(default=["ANA"
 @router.post("/fetch-financial-document/{cf_piva_id}")
 def fetch_financial_document(cf_piva_id: str):
     return fetch_and_upload_balance_sheet(cf_piva_id)
-
-
 
 @router.get("/italy-get-all-records")
 def get_master_data_of_italy(page: int = 1):
@@ -271,3 +270,7 @@ def check_document(companycode: str):
         "companyCode": companycode,
         **result
     }
+
+@router.get("/get-schedule-status/{company_code}")
+def fetch_schedule_status(company_code: str):
+    return get_company_schedule_status(company_code)
