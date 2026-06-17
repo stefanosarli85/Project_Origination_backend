@@ -12,6 +12,8 @@ from pydantic import BaseModel
 from enum import Enum
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
+from requests.exceptions import RequestException
+
 
 from dynamoDB.italy_region_services import is_report_available, get_all_kyc_requests, get_company_kyc_request, \
     get_company_schedule_status
@@ -21,8 +23,8 @@ from kyc.kyc_italy.italy_individual_kyc_api import request_kyc_for_italian_indiv
 from news.company_news import get_company_news
 from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
 from services.region.italy.ReportAziende.italy_region_service import column_search_italy, get_all_records_italy, get_and_save_company
-from services.region.italy.openapi.financial_documents import fetch_and_upload_balance_sheet
-
+from services.region.italy.openapi.financial_documents import fetch_and_upload_balance_sheet, get_wallet, \
+    get_wallet_transaction
 
 router = APIRouter(prefix="/api")
 
@@ -312,4 +314,28 @@ def get_ReportAziende_credit():
         return JSONResponse(
             status_code=500,
             content={"success": False, "error": str(e)}
+        )
+
+
+@router.get("/wallet")
+def fetch_wallet():
+    try:
+        return get_wallet()
+
+    except RequestException as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to fetch wallet data: {str(exc)}"
+        )
+
+
+@router.get("/wallet/transactions")
+def fetch_wallet_transactions():
+    try:
+        return get_wallet_transaction()
+
+    except RequestException as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"Failed to fetch wallet transactions: {str(exc)}"
         )

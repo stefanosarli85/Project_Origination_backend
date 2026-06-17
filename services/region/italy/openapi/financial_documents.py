@@ -141,3 +141,37 @@ def fetch_and_upload_balance_sheet(cf_piva_id: str, folder: str = "uploads") -> 
         "s3_url": s3_result["url"],
         "size_bytes": len(zip_bytes)
     }
+
+
+
+import requests
+
+BASE_URL = "https://oauth.openapi.com"
+
+def get_wallet():
+    headers = {
+        "Authorization": "Basic c3RlZmFuby5zYXJsaUBmb3JtdWxhLWNmLmNvbTo0azE4bTJoa2hqb3ljNWRxaXllbGhnNzl2eXdjeTl1eg==",
+        "Accept": "application/json"
+    }
+
+    response = requests.get(f"{BASE_URL}/wallet", headers=headers)
+    response.raise_for_status()
+
+    return response.json()
+
+def get_wallet_transaction():
+    headers = {
+        "Authorization": "Basic c3RlZmFuby5zYXJsaUBmb3JtdWxhLWNmLmNvbTo0azE4bTJoa2hqb3ljNWRxaXllbGhnNzl2eXdjeTl1eg==",
+        "Accept": "application/json"
+    }
+
+    response = requests.get(f"{BASE_URL}/wallet/transactions", headers=headers)
+    response.raise_for_status()
+
+    return response.json()
+
+response = get_wallet_transaction()
+print(response)
+
+wal=get_wallet()
+print(wal)
