@@ -8,7 +8,8 @@ import json
 
 from dynamoDB.italy_region_services import check_schedules_availability, save_company_schedules, get_company_schedules
 from repository.respository_connection import get_connection
-from services.region.italy.ReportAziende.api_integration import get_company_details_form_reportaziende
+from services.region.italy.ReportAziende.api_integration import get_company_details_form_reportaziende, \
+    update_credit_file
 
 
 # =========================================================
@@ -509,6 +510,9 @@ def get_and_save_company(company_code: str, schedules: list[str]) -> dict:
             missing
         )
 
+        if api_data and "crediti_rimanenti" in api_data:
+            update_credit_file(api_data["crediti_rimanenti"])
+
         if api_data:
             save_company_schedules(
                 api_data,
@@ -681,3 +685,6 @@ def column_search_italy(
         return {"total": total, "page": page, "limit": limit, "data": data}
     finally:
         conn.close()
+
+
+get_and_save_company("03440020984",["10"])

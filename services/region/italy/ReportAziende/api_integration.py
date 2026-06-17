@@ -20,3 +20,16 @@ def get_company_details_form_reportaziende(cid: str, schedules: list[str]):
     except requests.exceptions.RequestException as e:
         print(f"API request failed: {e}")
         return None
+
+import json
+from pathlib import Path
+
+def update_credit_file(new_credit: int):
+    # go to: services/region/italy/ReportAziende/
+    base_dir = Path(__file__).resolve().parent
+    file_path = base_dir / "credit.json"
+
+    data = {"available_credit": new_credit}
+
+    with open(file_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)

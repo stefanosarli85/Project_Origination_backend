@@ -3,6 +3,8 @@ from datetime import date
 from io import BytesIO
 from typing import Optional
 from fastapi import Form
+import json
+from pathlib import Path
 from fastapi.responses import JSONResponse
 from fastapi.responses import JSONResponse
 from fastapi import APIRouter, Query
@@ -274,3 +276,40 @@ def check_document(companycode: str):
 @router.get("/get-schedule-status/{company_code}")
 def fetch_schedule_status(company_code: str):
     return get_company_schedule_status(company_code)
+
+
+@router.get("/reportaziende/credit")
+def get_ReportAziende_credit():
+    try:
+        credit_file = (
+            Path.cwd()
+            / "services"
+            / "region"
+            / "italy"
+            / "ReportAziende"
+            / "credit.json"
+        )
+
+        if not credit_file.exists():
+            return JSONResponse(
+                status_code=404,
+                content={
+                    "success": False,
+                    "message": "credit file not found",
+                    "debug_path": str(credit_file)
+                }
+            )
+
+        with open(credit_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        return {
+            "success": True,
+            "available_credit": data.get("available_credit", 0)
+        }
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"success": False, "error": str(e)}
+        )
