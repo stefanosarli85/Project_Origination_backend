@@ -2,7 +2,8 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from api_controller import service_router
+from api_controller import indian_service_router
+from api_controller import  italy_service_router
 
 
 apps = FastAPI()
@@ -15,7 +16,8 @@ apps.add_middleware(
     allow_headers=["*"],
 )
 
-apps.include_router(service_router.router)
+apps.include_router(indian_service_router.router)
+apps.include_router(italy_service_router.router)
 
 
 

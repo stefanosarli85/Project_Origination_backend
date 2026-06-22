@@ -28,7 +28,6 @@ from kyc.kyc_global.testing import KYCRequestPayloadGlobal, create_kyc_request, 
 from kyc.kyc_italy.italy_company_kyc_api import get_company_kyc_pdf, request_kyc_for_italian_company
 from kyc.kyc_italy.italy_individual_kyc_api import request_kyc_for_italian_individual, get_person_kyc_pdf
 from news.company_news import get_company_news
-from services.region.india.CMIE_Prowess.api_integration import create_and_run_pipeline
 from services.region.italy.ReportAziende.italy_region_service import column_search_italy, get_all_records_italy, get_and_save_company
 from services.region.italy.openapi.financial_documents import fetch_and_upload_balance_sheet, get_wallet, \
     get_wallet_transaction
@@ -40,17 +39,6 @@ router = APIRouter(prefix="/api")
 class SearchRequest(BaseModel):
     search: str
 
-
-
-# INDIA
-@router.post("/india/get-report")
-async def run_italian_pipeline(company_code: str = Form(...)):
-    company_codes = [company_code]
-    response = await asyncio.get_running_loop().run_in_executor(
-        None,
-        lambda: create_and_run_pipeline(company_codes)
-    )
-    return response
 
 
 @router.post("/italy/company/{cid}")
