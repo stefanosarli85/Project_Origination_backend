@@ -685,6 +685,3 @@ def column_search_italy(
         return {"total": total, "page": page, "limit": limit, "data": data}
     finally:
         conn.close()
-
-
-get_and_save_company("03440020984",["10"])

@@ -10,7 +10,6 @@ AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 REGION = os.environ.get("AWS_REGION", "ap-south-1")
 
-print("S3 KEY LOADED:", bool(AWS_ACCESS_KEY_ID), bool(AWS_SECRET_ACCESS_KEY), "REGION:", REGION)
 
 # =========================
 # S3 CLIENT

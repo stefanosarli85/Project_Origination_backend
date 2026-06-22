@@ -48,7 +48,7 @@ def create_table():
         raise
 
 
-def save_response(cin: str, response: dict):
+def save_indian_companies_reports(cin: str, response: dict):
     table = dynamodb.Table(TABLE_NAME)
 
     table.put_item(
@@ -59,7 +59,7 @@ def save_response(cin: str, response: dict):
     )
 
 
-def get_response(cin: str):
+def get_company_report_cin_number(cin: str):
     table = dynamodb.Table(TABLE_NAME)
 
     result = table.get_item(Key={"cin": cin})

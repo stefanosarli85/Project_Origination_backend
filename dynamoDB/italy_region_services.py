@@ -207,7 +207,6 @@ def save_company_schedules(data: dict, schedules: list[str]):
 
 
 def get_company_schedules(company_code: str, schedules: list[str]) -> dict:
-    print("free return")
     table = dynamodb.Table("italy_companies")
 
     response = table.get_item(
@@ -465,7 +464,6 @@ def create_global_kyc_request_company_table():
 
         raise
 
-from decimal import Decimal
 
 
 individual_table = dynamodb.Table("global_kyc_request_individual")

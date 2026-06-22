@@ -1,7 +1,8 @@
 from fastapi import APIRouter, HTTPException, Query
 
 
-from dynamoDB.indian_region_service import list_company_reports, get_response
+from dynamoDB.indian_region_service import list_company_reports, get_company_report_cin_number
+from services.region.india.finavo_api import fetch_and_save_indian_company_report
 
 router = APIRouter(prefix="/api/india", tags=["India"])
 
@@ -36,8 +37,8 @@ async def get_company_reports(
 
 
 @router.get("/reports/{cin}")
-async def get_company_report(cin: str):
-    data = get_response(cin.strip().upper())
+async def get_saved_indian_companies_report(cin: str):
+    data = get_company_report_cin_number(cin.strip().upper())
 
     if not data:
         raise HTTPException(
@@ -49,9 +50,9 @@ async def get_company_report(cin: str):
 
 
 @router.post("/reports/{cin}")
-async def get_report(cin: str):
+async def fetch_and_save_indian_companies_report_by_cin_number(cin: str):
     try:
-        return get_company_report(cin)
+        return fetch_and_save_indian_company_report(cin)
 
     except Exception as exc:
         raise HTTPException(

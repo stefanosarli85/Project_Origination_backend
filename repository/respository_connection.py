@@ -46,5 +46,3 @@ def print_schema():
     cur.close()
     conn.close()
 
-print(print_schema())
-

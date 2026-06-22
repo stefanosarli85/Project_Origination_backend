@@ -42,7 +42,7 @@ class SearchRequest(BaseModel):
 
 
 @router.post("/italy/company/{cid}")
-def fetch_and_save_company(cid: str, schedules: list[str] = Query(default=["ANA"])):
+def fetch_and_save_company(cid: str, schedules: list[str] = Query(...)):
     return get_and_save_company(cid, schedules)
 
 @router.post("/fetch-financial-document/{cf_piva_id}")

@@ -8,7 +8,6 @@ from s3.s3_services import upload_bytes_to_s3
 
 OPENAI_TOKEN = os.environ.get("OPENAI_TOKEN")
 
-print("OPENAI KEY LOADED:", bool(OPENAI_TOKEN))
 
 
 def request_document(cf_piva_id: str):
@@ -169,9 +168,3 @@ def get_wallet_transaction():
     response.raise_for_status()
 
     return response.json()
-
-response = get_wallet_transaction()
-print(response)
-
-wal=get_wallet()
-print(wal)
