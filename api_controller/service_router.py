@@ -2,6 +2,11 @@ import asyncio
 from datetime import date
 from io import BytesIO
 from typing import Optional
+from fastapi import APIRouter, HTTPException, Response
+from typing import Literal
+
+from fastapi import APIRouter, HTTPException
+import httpx
 from fastapi import Form
 import json
 from pathlib import Path
@@ -18,6 +23,8 @@ from requests.exceptions import RequestException
 from dynamoDB.italy_region_services import is_report_available, get_all_kyc_requests, get_company_kyc_request, \
     get_company_schedule_status
 from kyc.kyc_global.global_kyc_api import kyc_person, kyc_company, KYCPersonRequest, KYCCompanyRequest
+from kyc.kyc_global.testing import KYCRequestPayloadGlobal, create_kyc_request, get_kyc_evidence, download_kyc_pdf, \
+    get_all_global_kyc_request_individual, get_all_global_kyc_request_company
 from kyc.kyc_italy.italy_company_kyc_api import get_company_kyc_pdf, request_kyc_for_italian_company
 from kyc.kyc_italy.italy_individual_kyc_api import request_kyc_for_italian_individual, get_person_kyc_pdf
 from news.company_news import get_company_news
@@ -128,6 +135,72 @@ def fetch_news(company_name: str):
     return get_company_news(company_name)
 
 ## KYC GLOBAL
+
+@router.post("/global/kyc")
+async def create_global_kyc_request(payload: KYCRequestPayloadGlobal):
+    try:
+        response = await create_kyc_request(payload)
+        return response
+
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=exc.response.text,
+        )
+
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Unable to connect to Risk API: {str(exc)}",
+        )
+
+
+@router.get("/global/kyc/{request_id}")
+async def get_global_kyc_request(request_id: str):
+    try:
+        return await get_kyc_evidence(request_id)
+
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=exc.response.text,
+        )
+
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Unable to connect to Risk API: {str(exc)}",
+        )
+
+@router.get("/global/kyc/{request_id}/{entity_id}/pdf")
+async def get_global_kyc_pdf(request_id: str, entity_id: str):
+    try:
+        pdf_bytes = await download_kyc_pdf(request_id, entity_id)
+
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="kyc_{request_id}.pdf"'
+                )
+            },
+        )
+
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=exc.response.text,
+        )
+
+    except httpx.RequestError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Unable to connect to Risk API: {str(exc)}",
+        )
+
+
+#-------------------------------------------------------
 
 class KYCTypeGlobal(str, Enum):
     person = "person"
@@ -338,4 +411,20 @@ def fetch_wallet_transactions():
         raise HTTPException(
             status_code=502,
             detail=f"Failed to fetch wallet transactions: {str(exc)}"
+        )
+
+@router.get("/kyc/{entity_type}")
+async def get_kyc_requests(
+    entity_type: Literal["individual", "company"],
+):
+    try:
+        if entity_type == "individual":
+            return get_all_global_kyc_request_individual()
+
+        return get_all_global_kyc_request_company()
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to fetch KYC requests: {str(exc)}",
         )

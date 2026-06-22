@@ -6,6 +6,8 @@ import json
 from boto3.dynamodb.conditions import Attr
 
 from dotenv import load_dotenv
+from botocore.exceptions import ClientError
+
 load_dotenv()
 
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
@@ -395,3 +397,134 @@ def get_company_kyc_request():
     except Exception as e:
         print(f"Error fetching requests: {e}")
         return []
+
+# Global kyc functions #
+
+def create_global_kyc_request_individual_table():
+    table_name = "global_kyc_request_individual"
+
+    try:
+        table = dynamodb.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {
+                    "AttributeName": "request_id",
+                    "KeyType": "HASH",
+                }
+            ],
+            AttributeDefinitions=[
+                {
+                    "AttributeName": "request_id",
+                    "AttributeType": "S",
+                }
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+
+        table.wait_until_exists()
+        return table
+
+    except ClientError as exc:
+        error_code = exc.response["Error"]["Code"]
+
+        if error_code == "ResourceInUseException":
+            return dynamodb.Table(table_name)
+
+        raise
+
+
+def create_global_kyc_request_company_table():
+    table_name = "global_kyc_request_company"
+
+    try:
+        table = dynamodb.create_table(
+            TableName=table_name,
+            KeySchema=[
+                {
+                    "AttributeName": "request_id",
+                    "KeyType": "HASH",
+                }
+            ],
+            AttributeDefinitions=[
+                {
+                    "AttributeName": "request_id",
+                    "AttributeType": "S",
+                }
+            ],
+            BillingMode="PAY_PER_REQUEST",
+        )
+
+        table.wait_until_exists()
+        return table
+
+    except ClientError as exc:
+        error_code = exc.response["Error"]["Code"]
+
+        if error_code == "ResourceInUseException":
+            return dynamodb.Table(table_name)
+
+        raise
+
+from decimal import Decimal
+
+
+individual_table = dynamodb.Table("global_kyc_request_individual")
+company_table = dynamodb.Table("global_kyc_request_company")
+
+
+def _convert_to_dynamodb(value):
+    if isinstance(value, float):
+        return Decimal(str(value))
+
+    if isinstance(value, dict):
+        return {
+            key: _convert_to_dynamodb(val)
+            for key, val in value.items()
+        }
+
+    if isinstance(value, list):
+        return [_convert_to_dynamodb(item) for item in value]
+
+    return value
+
+
+def save_global_kyc_request_individual_table(response: dict) -> dict:
+    data = response["data"]
+
+    item = {
+        "request_id": data["id"],
+        "entity_type": "I",
+        "first_name": data["query"].get("firstName"),
+        "last_name": data["query"].get("lastName"),
+        "birth_date": data["query"].get("birthDate"),
+        "state": data.get("state"),
+        "creation_timestamp": data.get("creationTimestamp"),
+        "last_update_timestamp": data.get("lastUpdateTimestamp"),
+        "entities_count": len(data.get("entities", [])),
+        "evidences_count": len(data.get("evidences", [])),
+        "raw_response": _convert_to_dynamodb(data),
+    }
+
+    individual_table.put_item(Item=item)
+
+    return item
+
+
+def save_global_kyc_request_company_table(response: dict) -> dict:
+    data = response["data"]
+
+    item = {
+        "request_id": data["id"],
+        "entity_type": "L",
+        "company_name": data["query"].get("name"),
+        "state": data.get("state"),
+        "creation_timestamp": data.get("creationTimestamp"),
+        "last_update_timestamp": data.get("lastUpdateTimestamp"),
+        "entities_count": len(data.get("entities", [])),
+        "evidences_count": len(data.get("evidences", [])),
+        "raw_response": _convert_to_dynamodb(data),
+    }
+
+    company_table.put_item(Item=item)
+
+    return item
