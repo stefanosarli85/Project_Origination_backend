@@ -528,3 +528,47 @@ def save_global_kyc_request_company_table(response: dict) -> dict:
     company_table.put_item(Item=item)
 
     return item
+
+from decimal import Decimal
+
+
+def update_global_kyc_request(
+    response: dict,
+    entity_type: str,
+) -> dict:
+    data = response["data"]
+
+    table = (
+        individual_table
+        if entity_type == "I"
+        else company_table
+    )
+
+    item = {
+        ":state": data.get("state"),
+        ":last_update_timestamp": data.get("lastUpdateTimestamp"),
+        ":entities_count": len(data.get("entities", [])),
+        ":evidences_count": len(data.get("evidences", [])),
+        ":raw_response": _convert_to_dynamodb(data),
+    }
+
+    response = table.update_item(
+        Key={
+            "request_id": data["id"],
+        },
+        UpdateExpression="""
+            SET
+                #state = :state,
+                last_update_timestamp = :last_update_timestamp,
+                entities_count = :entities_count,
+                evidences_count = :evidences_count,
+                raw_response = :raw_response
+        """,
+        ExpressionAttributeNames={
+            "#state": "state",
+        },
+        ExpressionAttributeValues=item,
+        ReturnValues="ALL_NEW",
+    )
+
+    return response["Attributes"]

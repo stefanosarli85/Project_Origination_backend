@@ -21,7 +21,7 @@ from requests.exceptions import RequestException
 
 
 from dynamoDB.italy_region_services import is_report_available, get_all_kyc_requests, get_company_kyc_request, \
-    get_company_schedule_status
+    get_company_schedule_status, update_global_kyc_request
 from kyc.kyc_global.global_kyc_api import kyc_person, kyc_company, KYCPersonRequest, KYCCompanyRequest
 from kyc.kyc_global.testing import KYCRequestPayloadGlobal, create_kyc_request, get_kyc_evidence, download_kyc_pdf, \
     get_all_global_kyc_request_individual, get_all_global_kyc_request_company
@@ -156,9 +156,22 @@ async def create_global_kyc_request(payload: KYCRequestPayloadGlobal):
 
 
 @router.get("/global/kyc/{request_id}")
-async def get_global_kyc_request(request_id: str):
+async def get_global_kyc_request(
+    request_id: str,
+    entity_type: Literal["individual", "company"],
+):
     try:
-        return await get_kyc_evidence(request_id)
+        result = await get_kyc_evidence(request_id)
+
+        data = result["data"]
+
+        if data["state"] == "COMPLETED":
+            update_global_kyc_request(
+                response=result,
+                entity_type="I" if entity_type == "individual" else "L",
+            )
+
+        return result
 
     except httpx.HTTPStatusError as exc:
         raise HTTPException(
