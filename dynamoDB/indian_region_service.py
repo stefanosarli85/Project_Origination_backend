@@ -1,10 +1,5 @@
-from datetime import datetime
-
 import boto3
 import os
-import json
-from boto3.dynamodb.conditions import Attr
-
 from dotenv import load_dotenv
 from botocore.exceptions import ClientError
 
